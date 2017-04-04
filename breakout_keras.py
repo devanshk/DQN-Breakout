@@ -20,8 +20,8 @@ import time
 
 ACTIONS = 6 # Number of possible actions to choose from
 LEARNING_RATE = 0.00025 # The learning rate
-GAMMA = 0.99 # Decay rate of past observations
-REPLAY_MEMORY = 50000 # Size of replay memory buffer
+GAMMA = 0.99 # Reward Discount Rate
+REPLAY_MEMORY = 50000 # Size of replay memory queue
 BATCH = 32 # Size of minibatch
 TRAIN_STEPS = 250000 # Timesteps per Epoch
 EPOCHS = 77 # Number of Epochs to Run
@@ -133,6 +133,7 @@ def trainNet(model, args):
             if len(D) > REPLAY_MEMORY: # And keep to our Replay Memory Size constraints
                 D.popleft()
 
+            # Reset the game when it ends
             if (done):
                 setupEpisode()
 
@@ -177,6 +178,7 @@ def trainNet(model, args):
                 with open("model.json","w") as outfile:
                     json.dump(model.to_json(), outfile)
 
+            # Basic Progress Reports
             if t%10000 == 0:
                 print ("Time: ",t//10000)
 
@@ -189,13 +191,10 @@ def trainNet(model, args):
             else:
                 state = "train"
 
+            # Basic Metrics
             bestQ = np.max(Q_sa)
             if (bestQ > qMax):
                 qMax = bestQ
-
-            # print("TIMESTEP", t, "/ STATE", state, \
-            #     "/ EPSILON", epsilon, "/ ACTION", action, "/ REWARD", r_t, \
-            #     "/ Q_MAX " , np.max(Q_sa), "/ Loss ", loss)
 
 
         print("Epoch {} finished in {}. Q_MAX: {}".format(ep, time.time()-start, qMax))
