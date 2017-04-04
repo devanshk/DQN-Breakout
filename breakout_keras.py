@@ -106,8 +106,8 @@ def trainNet(model, args):
             action = 0 # Action
             r_t = 0 # Reward
 
-            # Limit Rendering ot the first 500 timesteps of each epoch
-            if (t < 500 or args['render']):
+            # Only render if we passed that in as an argument
+            if args['render']:
                 env.render()
 
             # Every so often, based on exploration rate, take a random action
