@@ -62,8 +62,12 @@ def trainNet(model, args):
     global epsilon, observation, reward, done, info, env, s_t, s_t1
 
     ep = 1
+    ep_rewards =   [] # average rewards for each epoch
+    ep_durations = [] # duration of each epoch
 
     while(ep <= EPOCHS):
+        net_reward = 0
+        episodes = 0
         start = time.time() # Time each epoch
         qMax = 0 # Store Best Q info
         t = 0
@@ -94,6 +98,9 @@ def trainNet(model, args):
             # Take the action and observe the result
             observation, reward, done, info = env.step(action)
 
+            # update reward metric
+            net_reward += reward
+
             # Pre-Process the new state
             pre_process(observation)
 
@@ -103,6 +110,7 @@ def trainNet(model, args):
                 D.popleft()
 
             if (done):
+                episodes += 1
                 setupEpisode()
             # print("start train")
             # Train after observing for a period of timesteps
@@ -159,17 +167,24 @@ def trainNet(model, args):
             else:
                 state = "train"
 
+
+
             bestQ = np.max(Q_sa)
             if (bestQ > qMax):
                 qMax = bestQ
 
-            # print("TIMESTEP", t, "/ STATE", state, \
-            #     "/ EPSILON", epsilon, "/ ACTION", action, "/ REWARD", r_t, \
-            #     "/ Q_MAX " , np.max(Q_sa), "/ Loss ", loss)
+        dt = time.time()-start
+        ar = net_reward / episodes
+        ep_durations.append(dt)
+        ep_rewards.append(ar)
 
-
-        print("Epoch {} finished in {}. Q_MAX: {}".format(ep, time.time()-start, qMax))
+        print("Epoch {} finished in {}. Q_MAX: {}".format(ep, dt, qMax))
         print("*****************")
+        # notify every NOTIFY_RATE times
+        if ep % NOTIFY_RATE == 0:
+            stats.average_rewards(ep_rewards)
+            notify.send_epoch_email(ep, ep_rewards, ep_durations)
+
         ep = ep + 1
 
 

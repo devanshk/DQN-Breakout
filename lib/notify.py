@@ -9,23 +9,27 @@ from email.mime.base import MIMEBase
 from email import encoders
 import datetime as dt
 
-def avg_time_delta(tds):
-    return sum(tds, dt.timedelta(0)) / len(tds)
 
 def minutes(td):
     return (td.seconds//60)%60
 
-def send_epoch_email(epoch, epochs, rewards, epoch_durations):
-    with open('notify_receivers.json') as data_file:
+def send_epoch_email(epoch, rewards, epoch_durations):
+    with open('notify.json') as data_file:
         receivers = json.load(data_file)
     curr_time = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    avg_reward = round(np.mean(rewards), 2)
+    avg_epoch_duration = np.mean(epoch_durations)
+    seconds_left = int(avg_epoch_duration) * (EPOCHS - epoch)
+    mm, ss = divmod(seconds_left, 60)
+    hh, mm = divmod(mm, 60)
     subject = "Training Update".format(epoch)
     body = "Just updating you on the training process. \
     The time is {}. I will update you every {} epochs. This is epoch {}, {} more epochs to go!\
+    Given my current pace, I will probably be done training in {} hours and {} minutes.\
     Here are some stats to let you know how well I am doing:\n\n".format(\
-    curr_time, NOTIFY_RATE, epoch, EPOCHS - epoch)
-    data = {"Avg. reward":np.mean(rewards),
-            "Avg. epoch duration":minutes(avg_time_delta(epoch_durations))}
+    curr_time, NOTIFY_RATE, epoch, EPOCHS - epoch, hh, mm)
+    data = {"Avg. reward":avg_reward,
+            "Avg. epoch duration (minutes)":round(avg_epoch_duration/60, 2)}
 
     send(subject=subject,
             data = data,
@@ -58,7 +62,7 @@ def send(subject="Training Update",
         msg['To'] = person
         msg['Subject'] = subject
 
-        for k,v in data.iteritems():
+        for k,v in data.items():
             body += "{} : {}\n".format(k,v)
 
         msg.attach(MIMEText(body, 'plain'))

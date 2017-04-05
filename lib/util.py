@@ -22,5 +22,6 @@ import argparse
 import time
 
 # INTERNAL
-import lib.notify
+import lib.notify as notify
+import lib.stats as stats
 from lib.hyperparams import *
