@@ -1,34 +1,6 @@
-import numpy as np
-import keras
-from keras.models import Sequential
-from keras.layers import *
-from keras.initializations import *
-from keras.optimizers import *
-import tensorflow as tf
-import skimage
-from skimage import color
-from skimage import transform
-from skimage import util
-from skimage import exposure
-from skimage.viewer import ImageViewer
-import gym
-import random
-from collections import deque
-import json
-import argparse
-import time
+from lib.util import *
 
-ACTIONS = 6 # Number of possible actions to choose from
-LEARNING_RATE = 0.00025 # The learning rate
-GAMMA = 0.99 # Decay rate of past observations
-REPLAY_MEMORY = 50000 # Size of replay memory buffer
-BATCH = 32 # Size of minibatch
-TRAIN_STEPS = 250000 # Timesteps per Epoch
-EPOCHS = 77 # Number of Epochs to Run
-INITIAL_EPSILON = 0.1 # Initial Epsilon - rate of exploration
-FINAL_EPSILON = 0.0001 # Final Episilon
-EXPLORE = 3000000 # Timesteps to go from INITIAL_EPSILON to FINAL_EPSILON
-OBSERVATION = 50000 # Timesteps to observe before training
+
 
 def setup():
     """ Initial Setup to use OpenAI's Breakout environment """
@@ -59,18 +31,18 @@ def pre_process(observ, init=False):
 
 def buildmodel():
     """ Build the actual model """
-    print("Building Model..")
+    print("Building Model...")
     model = Sequential()
-    model.add(Convolution2D(32, 8, 8, subsample=(4,4), init=lambda shape, name, dim_ordering: normal(shape, scale=0.01, name=name), border_mode='same',input_shape=(84,84,4)))
+    model.add(Conv2D(32, (8, 8), strides=(4,4), input_shape=(84,84,4), padding='same', name='conv1'))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 4, 4, subsample=(2,2),init=lambda shape, name, dim_ordering: normal(shape, scale=0.01, name=name), border_mode='same'))
+    model.add(Conv2D(64, (4, 4), strides=(2,2), padding='same', name='conv2'))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 3, 3, subsample=(1,1),init=lambda shape, name, dim_ordering: normal(shape, scale=0.01, name=name), border_mode='same'))
+    model.add(Conv2D(64, (3, 3), strides=(1,1), padding='same', name='conv3'))
     model.add(Activation('relu'))
     model.add(Flatten())
-    model.add(Dense(512, init=lambda shape, name: normal(shape, scale=0.01, name=name)))
+    model.add(Dense(512, name='fc1'))
     model.add(Activation('relu'))
-    model.add(Dense(ACTIONS,init=lambda shape, name: normal(shape, scale=0.01, name=name)))
+    model.add(Dense(ACTION_SPACE_SIZE, name='fc2'))
 
     adam = Adam(lr = LEARNING_RATE)
     model.compile(loss='mse', optimizer = adam)
@@ -79,12 +51,9 @@ def buildmodel():
 def setupEpisode():
     """ Do some initial setup for the first episode """
     global epsilon, env
-
     env.reset() # Take an initial step
     observation, reward, done, info = env.step(5)
-
     pre_process(observation, True)
-
     epsilon = INITIAL_EPSILON
 
 
@@ -101,10 +70,10 @@ def trainNet(model, args):
         D = deque()
         setupEpisode()
         while(t < TRAIN_STEPS):
-            loss = 0 # Loss
-            Q_sa = 0 # Q value given state/action pair
-            action = 0 # Action
-            r_t = 0 # Reward
+            loss = 0        # Loss
+            Q_sa = 0        # Q value given state/action pair
+            action = 0      # Action
+            r_t = 0         # Reward
 
             # Limit Rendering ot the first 500 timesteps of each epoch
             if (t < 500 or args['render']):
