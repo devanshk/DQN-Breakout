@@ -31,11 +31,17 @@ def buildmodel():
     """ Build the actual model """
     print("Building Model...")
     model = Sequential()
-    model.add(Conv2D(32, (8, 8), strides=(4,4), input_shape=(84,84,4), padding='same', name='conv1'))
+    model.add(Conv2D(32, (8, 8), strides=(4,4), input_shape=(84,84,4),\
+              kernel_initializer=VarianceScaling(scale=0.01, distribution='normal'),\
+              padding='same', name='conv1'))
     model.add(Activation('relu'))
-    model.add(Conv2D(64, (4, 4), strides=(2,2), padding='same', name='conv2'))
+    model.add(Conv2D(64, (4, 4), strides=(2,2), padding='same', name='conv2',\
+              kernel_initializer=VarianceScaling(scale=0.01, distribution='normal'),\
+              ))
     model.add(Activation('relu'))
-    model.add(Conv2D(64, (3, 3), strides=(1,1), padding='same', name='conv3'))
+    model.add(Conv2D(64, (3, 3), strides=(1,1), padding='same', name='conv3',\
+              kernel_initializer=VarianceScaling(scale=0.01, distribution='normal')\
+              ))
     model.add(Activation('relu'))
     model.add(Flatten())
     model.add(Dense(512, name='fc1'))
