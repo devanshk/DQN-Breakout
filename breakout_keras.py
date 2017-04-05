@@ -1,7 +1,5 @@
 from lib.util import *
 
-
-
 def setup():
     """ Initial Setup to use OpenAI's Breakout environment """
     global env
@@ -79,8 +77,9 @@ def trainNet(model, args):
             action = 0      # Action
             r_t = 0         # Reward
 
-            # Limit Rendering ot the first 500 timesteps of each epoch
-            if (args['render']):
+
+            # Only render if we passed that in as an argument
+            if args['render']:
                 env.render()
 
             # Every so often, based on exploration rate, take a random action
@@ -109,6 +108,7 @@ def trainNet(model, args):
             if len(D) > REPLAY_MEMORY: # And keep to our Replay Memory Size constraints
                 D.popleft()
 
+            # Reset the game when it ends
             if (done):
                 episodes += 1
                 setupEpisode()
@@ -155,6 +155,7 @@ def trainNet(model, args):
                 with open("model.json","w") as outfile:
                     json.dump(model.to_json(), outfile)
 
+            # Basic Progress Reports
             if t%10000 == 0:
                 print ("Time: ",t//10000)
 
@@ -167,7 +168,7 @@ def trainNet(model, args):
             else:
                 state = "train"
 
-
+            # Basic Metrics
 
             bestQ = np.max(Q_sa)
             if (bestQ > qMax):
