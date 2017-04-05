@@ -1,34 +1,4 @@
-import numpy as np
-import keras
-from keras.models import Sequential
-from keras.layers import *
-from keras.initializations import *
-from keras.optimizers import *
-import tensorflow as tf
-import skimage
-from skimage import color
-from skimage import transform
-from skimage import util
-from skimage import exposure
-from skimage.viewer import ImageViewer
-import gym
-import random
-from collections import deque
-import json
-import argparse
-import time
-
-ACTIONS = 6 # Number of possible actions to choose from
-LEARNING_RATE = 0.00025 # The learning rate
-GAMMA = 0.99 # Reward Discount Rate
-REPLAY_MEMORY = 50000 # Size of replay memory queue
-BATCH = 32 # Size of minibatch
-TRAIN_STEPS = 250000 # Timesteps per Epoch
-EPOCHS = 77 # Number of Epochs to Run
-INITIAL_EPSILON = 0.1 # Initial Epsilon - rate of exploration
-FINAL_EPSILON = 0.0001 # Final Episilon
-EXPLORE = 3000000 # Timesteps to go from INITIAL_EPSILON to FINAL_EPSILON
-OBSERVATION = 50000 # Timesteps to observe before training
+from lib.util import *
 
 def setup():
     """ Initial Setup to use OpenAI's Breakout environment """
@@ -59,18 +29,18 @@ def pre_process(observ, init=False):
 
 def buildmodel():
     """ Build the actual model """
-    print("Building Model..")
+    print("Building Model...")
     model = Sequential()
-    model.add(Convolution2D(32, 8, 8, subsample=(4,4), init=lambda shape, name, dim_ordering: normal(shape, scale=0.01, name=name), border_mode='same',input_shape=(84,84,4)))
+    model.add(Conv2D(32, (8, 8), strides=(4,4), input_shape=(84,84,4), padding='same', name='conv1'))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 4, 4, subsample=(2,2),init=lambda shape, name, dim_ordering: normal(shape, scale=0.01, name=name), border_mode='same'))
+    model.add(Conv2D(64, (4, 4), strides=(2,2), padding='same', name='conv2'))
     model.add(Activation('relu'))
-    model.add(Convolution2D(64, 3, 3, subsample=(1,1),init=lambda shape, name, dim_ordering: normal(shape, scale=0.01, name=name), border_mode='same'))
+    model.add(Conv2D(64, (3, 3), strides=(1,1), padding='same', name='conv3'))
     model.add(Activation('relu'))
     model.add(Flatten())
-    model.add(Dense(512, init=lambda shape, name: normal(shape, scale=0.01, name=name)))
+    model.add(Dense(512, name='fc1'))
     model.add(Activation('relu'))
-    model.add(Dense(ACTIONS,init=lambda shape, name: normal(shape, scale=0.01, name=name)))
+    model.add(Dense(ACTION_SPACE_SIZE, name='fc2'))
 
     adam = Adam(lr = LEARNING_RATE)
     model.compile(loss='mse', optimizer = adam)
@@ -79,12 +49,9 @@ def buildmodel():
 def setupEpisode():
     """ Do some initial setup for the first episode """
     global epsilon, env
-
     env.reset() # Take an initial step
     observation, reward, done, info = env.step(5)
-
     pre_process(observation, True)
-
     epsilon = INITIAL_EPSILON
 
 
@@ -93,18 +60,23 @@ def trainNet(model, args):
     global epsilon, observation, reward, done, info, env, s_t, s_t1
 
     ep = 1
+    ep_rewards =   [] # average rewards for each epoch
+    ep_durations = [] # duration of each epoch
 
     while(ep <= EPOCHS):
+        net_reward = 0
+        episodes = 0
         start = time.time() # Time each epoch
         qMax = 0 # Store Best Q info
         t = 0
         D = deque()
         setupEpisode()
-        while(t < TRAIN_STEPS):
-            loss = 0 # Loss
-            Q_sa = 0 # Q value given state/action pair
-            action = 0 # Action
-            r_t = 0 # Reward
+        while(t < EPOCH_SIZE):
+            loss = 0        # Loss
+            Q_sa = 0        # Q value given state/action pair
+            action = 0      # Action
+            r_t = 0         # Reward
+
 
             # Only render if we passed that in as an argument
             if args['render']:
@@ -125,6 +97,9 @@ def trainNet(model, args):
             # Take the action and observe the result
             observation, reward, done, info = env.step(action)
 
+            # update reward metric
+            net_reward += reward
+
             # Pre-Process the new state
             pre_process(observation)
 
@@ -135,8 +110,9 @@ def trainNet(model, args):
 
             # Reset the game when it ends
             if (done):
+                episodes += 1
                 setupEpisode()
-
+            # print("start train")
             # Train after observing for a period of timesteps
             if t == OBSERVATION:
                 print("--Observation Over, Training Now--")
@@ -166,12 +142,13 @@ def trainNet(model, args):
                         targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
 
                 loss += model.train_on_batch(inputs, targets)
+            # print("end train")
 
             # Update the state and time
             s_t = s_t1
             t = t+1
 
-            # Save our model evert 1000 iterations
+            # Save our model every 1000 iterations
             if t % 1000 == 0 and args['save']:
                 # print("Saved model.")
                 model.save_weights("model.h5", overwrite = True)
@@ -192,13 +169,23 @@ def trainNet(model, args):
                 state = "train"
 
             # Basic Metrics
+
             bestQ = np.max(Q_sa)
             if (bestQ > qMax):
                 qMax = bestQ
 
+        dt = time.time()-start
+        ar = net_reward / episodes
+        ep_durations.append(dt)
+        ep_rewards.append(ar)
 
-        print("Epoch {} finished in {}. Q_MAX: {}".format(ep, time.time()-start, qMax))
+        print("Epoch {} finished in {}. Q_MAX: {}".format(ep, dt, qMax))
         print("*****************")
+        # notify every NOTIFY_RATE times
+        if ep % NOTIFY_RATE == 0:
+            stats.average_rewards(ep_rewards)
+            notify.send_epoch_email(ep, ep_rewards, ep_durations)
+
         ep = ep + 1
 
 
