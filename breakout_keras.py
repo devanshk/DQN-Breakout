@@ -69,14 +69,14 @@ def trainNet(model, args):
         t = 0
         D = deque()
         setupEpisode()
-        while(t < TRAIN_STEPS):
+        while(t < EPOCH_SIZE):
             loss = 0        # Loss
             Q_sa = 0        # Q value given state/action pair
             action = 0      # Action
             r_t = 0         # Reward
 
             # Limit Rendering ot the first 500 timesteps of each epoch
-            if (t < 500 or args['render']):
+            if (args['render']):
                 env.render()
 
             # Every so often, based on exploration rate, take a random action
@@ -104,7 +104,7 @@ def trainNet(model, args):
 
             if (done):
                 setupEpisode()
-
+            # print("start train")
             # Train after observing for a period of timesteps
             if t == OBSERVATION:
                 print("--Observation Over, Training Now--")
@@ -134,12 +134,13 @@ def trainNet(model, args):
                         targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
 
                 loss += model.train_on_batch(inputs, targets)
+            # print("end train")
 
             # Update the state and time
             s_t = s_t1
             t = t+1
 
-            # Save our model evert 1000 iterations
+            # Save our model every 1000 iterations
             if t % 1000 == 0 and args['save']:
                 # print("Saved model.")
                 model.save_weights("model.h5", overwrite = True)
