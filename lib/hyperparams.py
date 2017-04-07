@@ -1,8 +1,7 @@
 # Hyperparameters
 
-NOTIFY_RATE = 5
 ACTIONS = 6                 # Number of possible actions to choose from
-LEARNING_RATE = 0.00025     # The learning rate
+LEARNING_RATE = 0.025       # The learning rate
 GAMMA = 0.99                # Decay rate of past observations
 REPLAY_MEMORY = 25000       # Size of replay memory buffer
 BATCH = 128                 # Size of minibatch

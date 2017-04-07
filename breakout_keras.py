@@ -187,8 +187,8 @@ def trainNet(model, args):
 
         print("Epoch {} finished in {}. Q_MAX: {}".format(ep, dt, qMax))
         print("*****************")
-        # notify every NOTIFY_RATE times
-        if ep % NOTIFY_RATE == 0:
+        # send notifcations by notification rate
+        if args["notify"] and ep % args["notify"] == 0:
             stats.average_rewards(ep_rewards)
             notify.send_epoch_email(ep, ep_rewards, ep_durations)
 
@@ -200,6 +200,8 @@ def main():
     parser.add_argument('--load_weights', help='Specify a model to load', required=False)
     parser.add_argument("--render", help="Render the game", action="store_true")
     parser.add_argument("--save", help="Save the model", action="store_true")
+    parser.add_argument("--notify", help="Send email notifications per rate epochs", action="store_true")
+
     args = vars(parser.parse_args())
 
     net = buildmodel()
