@@ -123,10 +123,15 @@ def trainNet(model, args):
             if t == OBSERVATION:
                 print("--Observation Over, Training Now--")
             if t > OBSERVATION:
-                # Sample a minibatch to train on
-                minibatch = random.sample(D, BATCH)
 
-                inputs = np.zeros((BATCH, s_t.shape[1], s_t.shape[2], s_t.shape[3]))
+                # batchsize based on the number of available GPUs
+                if args["gpu"]:
+                    batchsize = BATCH * args["gpu"]
+
+                # Sample a minibatch to train on
+                minibatch = random.sample(D, batchsize)
+
+                inputs = np.zeros((batchsize, s_t.shape[1], s_t.shape[2], s_t.shape[3]))
                 targets = np.zeros((inputs.shape[0], ACTIONS))
 
                 # Use Experience Replay
@@ -148,7 +153,6 @@ def trainNet(model, args):
                         targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
 
                 loss += model.train_on_batch(inputs, targets)
-            # print("end train")
 
             # Update the state and time
             s_t = s_t1
@@ -200,9 +204,14 @@ def main():
     parser.add_argument('--load_weights', help='Specify a model to load', required=False)
     parser.add_argument("--render", help="Render the game", action="store_true")
     parser.add_argument("--save", help="Save the model", action="store_true")
+    parser.add_argument("--gpu", help="Add gpu support (by default for 1 gpu)", action="store_true")
+
     args = vars(parser.parse_args())
 
     net = buildmodel()
+
+    if args["gpu"] and args["gpu"] > 1:
+        net = make_parallel(net, args["gpu"])
 
     if (args['load_weights']):
         print("Loading model from ",args['load_weights'])
