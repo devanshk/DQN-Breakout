@@ -127,6 +127,8 @@ def trainNet(model, args):
                 # batchsize based on the number of available GPUs
                 if args["gpu"]:
                     batchsize = BATCH * args["gpu"]
+                else:
+                    batchsize = BATCH
 
                 # Sample a minibatch to train on
                 minibatch = random.sample(D, batchsize)
@@ -161,6 +163,7 @@ def trainNet(model, args):
             # Save our model every 1000 iterations
             if t % 1000 == 0 and args['save']:
                 # print("Saved model.")
+                print("Update {}".format(t))
                 model.save_weights("model.h5", overwrite = True)
                 with open("model.json","w") as outfile:
                     json.dump(model.to_json(), outfile)
@@ -191,8 +194,8 @@ def trainNet(model, args):
 
         print("Epoch {} finished in {}. Q_MAX: {}".format(ep, dt, qMax))
         print("*****************")
-        # notify every NOTIFY_RATE times
-        if ep % NOTIFY_RATE == 0:
+        # send notifcations by notification rate
+        if args["notify"] and ep % args["notify"] == 0:
             stats.average_rewards(ep_rewards)
             notify.send_epoch_email(ep, ep_rewards, ep_durations)
 
@@ -205,6 +208,7 @@ def main():
     parser.add_argument("--render", help="Render the game", action="store_true")
     parser.add_argument("--save", help="Save the model", action="store_true")
     parser.add_argument("--gpu", help="Add gpu support (by default for 1 gpu)", action="store_true")
+    parser.add_argument("--notify", help="Send email notifications per rate epochs", action="store_true")
 
     args = vars(parser.parse_args())
 
